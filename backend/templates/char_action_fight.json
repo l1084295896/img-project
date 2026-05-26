@@ -1,0 +1,15 @@
+{
+  "id": "char_action_fight",
+  "description": "角色战斗姿态",
+  "tags": ["战斗", "动作", "动态", "武器", "张力", "攻击"],
+  "positive_prompt": "(masterpiece:1.2), (best quality:1.0), {character_name}, battle stance, dynamic pose, action scene, dramatic lighting, weapon",
+  "negative_prompt": "blurry, low quality, deformed body, extra fingers, watermark, nsfw",
+  "workflow_params": {
+    "steps": 30,
+    "cfg_scale": 8.0,
+    "width": 1024,
+    "height": 768,
+    "sampler": "dpmpp_2m_karras",
+    "lora_strength": 0.75
+  }
+}
