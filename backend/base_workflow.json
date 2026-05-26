@@ -1,0 +1,44 @@
+{
+  "last_node_id": 7,
+  "nodes": {
+    "1": {
+      "type": "CheckpointLoaderSimple",
+      "inputs": {"ckpt_name": "v1-5-pruned-emaonly.safetensors"}
+    },
+    "2": {
+      "type": "LoraLoader",
+      "inputs": {
+        "lora_name": "last.safetensors",
+        "strength_model": 0.8,
+        "strength_clip": 0.8
+      }
+    },
+    "3": {
+      "type": "CLIPTextEncode",
+      "inputs": {"text": "{PROMPT}"}
+    },
+    "4": {
+      "type": "CLIPTextEncode",
+      "inputs": {"text": "{NEGATIVE}"}
+    },
+    "5": {
+      "type": "KSampler",
+      "inputs": {
+        "seed": 42,
+        "steps": 20,
+        "cfg": 7.0,
+        "sampler_name": "euler",
+        "denoise": 1.0
+      }
+    },
+    "6": {
+      "type": "VAEDecode",
+      "inputs": {}
+    },
+    "7": {
+      "type": "SaveImage",
+      "inputs": {"filename_prefix": "output"}
+    }
+  },
+  "links": [[1, 2], [2, 3], [3, 5], [4, 5], [5, 6], [6, 7]]
+}
