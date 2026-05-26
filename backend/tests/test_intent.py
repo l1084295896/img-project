@@ -40,17 +40,39 @@ def test_recognize_intent_fills_missing_fields_with_none(mock_gen):
     mock_gen.call.return_value = make_mock_response({
         "category": "场景",
         "intent": "scene_generation",
-        "character": None,
-        "pose": None,
-        "mood": None,
-        "angle": "鸟瞰",
-        "extra_description": "古城"
+        "angle": "鸟瞰"
     })
 
     result = recognize_intent("生成古代城市鸟瞰图")
 
+    assert result["category"] == "场景"
     assert result["character"] is None
+    assert result["pose"] is None
     assert result["angle"] == "鸟瞰"
+
+
+@patch("backend.pipeline.intent.Generation")
+def test_recognize_intent_handles_non_200_status(mock_gen):
+    mock = make_mock_response({})
+    mock.status_code = 403
+    mock_gen.call.return_value = mock
+
+    with pytest.raises(Exception, match="Intent recognition failed"):
+        recognize_intent("测试prompt")
+
+
+@patch("backend.pipeline.intent.Generation")
+def test_recognize_intent_handles_invalid_json(mock_gen):
+    mock = MagicMock()
+    mock.status_code = 200
+    mock.output = MagicMock()
+    mock.output.choices = [
+        MagicMock(message=MagicMock(content="这不是JSON，是一段普通文本"))
+    ]
+    mock_gen.call.return_value = mock
+
+    with pytest.raises(Exception, match="Intent recognition failed"):
+        recognize_intent("测试prompt")
 
 
 @patch("backend.pipeline.intent.Generation")
@@ -59,3 +81,10 @@ def test_recognize_intent_handles_api_error(mock_gen):
 
     with pytest.raises(Exception, match="Intent recognition failed"):
         recognize_intent("测试prompt")
+
+
+def test_recognize_intent_rejects_empty_input():
+    with pytest.raises(ValueError, match="non-empty string"):
+        recognize_intent("")
+    with pytest.raises(ValueError, match="non-empty string"):
+        recognize_intent("   ")
