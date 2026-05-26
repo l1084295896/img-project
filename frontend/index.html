@@ -1,1 +1,249 @@
-<html><body>Demo</body></html>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Art Agent Demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #0f0f14;
+    color: #e0e0e0;
+    min-height: 100vh;
+  }
+  .container { max-width: 900px; margin: 0 auto; padding: 32px 16px; }
+  h1 { font-size: 24px; margin-bottom: 24px; color: #fff; }
+
+  .input-section {
+    background: #1a1a24; border-radius: 12px; padding: 20px; margin-bottom: 24px;
+    border: 1px solid #2a2a3a;
+  }
+  .input-section textarea {
+    width: 100%; height: 60px; background: #0f0f14; border: 1px solid #2a2a3a;
+    border-radius: 8px; padding: 12px; color: #e0e0e0; font-size: 15px;
+    resize: vertical; font-family: inherit;
+  }
+  .input-section textarea:focus { outline: none; border-color: #6c5ce7; }
+  .input-section button {
+    margin-top: 12px; padding: 10px 28px; background: #6c5ce7; color: #fff;
+    border: none; border-radius: 8px; font-size: 15px; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .input-section button:hover { background: #7d6ff0; }
+  .input-section button:disabled { background: #3a3a4a; cursor: not-allowed; }
+
+  .result-section {
+    background: #1a1a24; border-radius: 12px; padding: 20px;
+    border: 1px solid #2a2a3a; min-height: 200px;
+  }
+  .result-section h2 { font-size: 18px; margin-bottom: 16px; }
+
+  .steps { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .step {
+    padding: 4px 12px; border-radius: 6px; font-size: 13px;
+    background: #2a2a3a; color: #888;
+  }
+  .step.done { background: #1a3a2a; color: #4ade80; }
+  .step.in_progress { background: #3a2a1a; color: #facc15; animation: pulse 1s infinite; }
+  .step.failed { background: #3a1a1a; color: #f87171; }
+  @keyframes pulse { 50% { opacity: 0.6; } }
+
+  .image-area {
+    text-align: center; margin-bottom: 16px;
+  }
+  .image-area img {
+    max-width: 100%; max-height: 500px; border-radius: 8px;
+    border: 1px solid #2a2a3a;
+  }
+  .image-area .placeholder {
+    display: flex; align-items: center; justify-content: center;
+    height: 200px; color: #555; font-size: 14px;
+  }
+
+  .info { font-size: 13px; color: #888; margin-bottom: 16px; }
+  .info span { margin-right: 16px; }
+
+  .actions { display: flex; gap: 12px; justify-content: center; }
+  .actions button {
+    padding: 8px 24px; border-radius: 8px; font-size: 14px; cursor: pointer;
+    border: 1px solid #2a2a3a; background: transparent; color: #e0e0e0;
+  }
+  .actions button.primary { background: #6c5ce7; border-color: #6c5ce7; color: #fff; }
+  .actions button:hover { opacity: 0.85; }
+  .actions button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .actions button.danger { border-color: #f87171; color: #f87171; }
+
+  .error { background: #3a1a1a; border: 1px solid #f87171; border-radius: 8px;
+    padding: 12px; color: #f87171; font-size: 14px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Game Art Agent Demo</h1>
+
+  <div class="input-section">
+    <textarea id="promptInput" placeholder="描述你想要的图片，例如：生成一张艾琳的战斗姿态"></textarea>
+    <button id="generateBtn" onclick="generate()">生成图片</button>
+  </div>
+
+  <div class="result-section" id="resultSection">
+    <h2>生成结果</h2>
+    <div class="steps" id="steps"></div>
+    <div class="error" id="errorMsg" style="display:none"></div>
+    <div class="image-area" id="imageArea">
+      <div class="placeholder">等待输入 prompt 开始生成</div>
+    </div>
+    <div class="info" id="infoArea"></div>
+    <div class="actions" id="actions" style="display:none">
+      <button class="primary" onclick="saveImage()">确认保存</button>
+      <button class="danger" onclick="retry()">重新生成</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentTaskId = null;
+let pollTimer = null;
+
+const stepNames = {
+  intent: "意图识别", template: "模板匹配",
+  workflow: "构建工作流", generate: "图片生成", error: "错误"
+};
+
+async function generate() {
+  const prompt = document.getElementById("promptInput").value.trim();
+  if (!prompt) return;
+
+  const btn = document.getElementById("generateBtn");
+  btn.disabled = true;
+  btn.textContent = "处理中...";
+
+  resetUI();
+
+  try {
+    const resp = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await resp.json();
+    currentTaskId = data.task_id;
+    poll();
+  } catch (e) {
+    showError("请求失败: " + e.message);
+    btn.disabled = false;
+    btn.textContent = "生成图片";
+  }
+}
+
+function resetUI() {
+  document.getElementById("steps").innerHTML = "";
+  document.getElementById("errorMsg").style.display = "none";
+  document.getElementById("imageArea").innerHTML = '<div class="placeholder">处理中...</div>';
+  document.getElementById("infoArea").innerHTML = "";
+  document.getElementById("actions").style.display = "none";
+}
+
+function poll() {
+  if (!currentTaskId) return;
+
+  fetch("/api/result/" + currentTaskId)
+    .then(r => r.json())
+    .then(data => {
+      renderSteps(data.steps);
+      renderError(data.error);
+
+      if (data.status === "done") {
+        stopPolling();
+        renderImage(data.image);
+        renderInfo(data.info);
+        showActions();
+        document.getElementById("generateBtn").disabled = false;
+        document.getElementById("generateBtn").textContent = "生成图片";
+      } else if (data.status === "error") {
+        stopPolling();
+        document.getElementById("generateBtn").disabled = false;
+        document.getElementById("generateBtn").textContent = "生成图片";
+      }
+    })
+    .catch(e => {
+      stopPolling();
+      showError("轮询失败: " + e.message);
+    });
+}
+
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+function renderSteps(steps) {
+  if (!steps) return;
+  const el = document.getElementById("steps");
+  el.innerHTML = steps.map(s => {
+    const name = stepNames[s.name] || s.name;
+    return `<span class="step ${s.status}">${name} ${s.status === 'in_progress' ? '...' : '✓'}</span>`;
+  }).join("");
+}
+
+function renderError(error) {
+  const el = document.getElementById("errorMsg");
+  if (error) {
+    el.style.display = "block";
+    el.textContent = error;
+  } else {
+    el.style.display = "none";
+  }
+}
+
+function renderImage(imageB64) {
+  const el = document.getElementById("imageArea");
+  if (imageB64) {
+    el.innerHTML = `<img src="${imageB64}" alt="生成结果" />`;
+  }
+}
+
+function renderInfo(info) {
+  if (!info) return;
+  const el = document.getElementById("infoArea");
+  const parts = [];
+  if (info.character) parts.push(`角色: ${info.character}`);
+  if (info.template_desc) parts.push(`模板: ${info.template_desc}`);
+  if (info.elapsed) parts.push(`耗时: ${info.elapsed}s`);
+  el.innerHTML = parts.map(p => `<span>${p}</span>`).join("");
+}
+
+function showActions() {
+  document.getElementById("actions").style.display = "flex";
+}
+
+function showError(msg) {
+  const el = document.getElementById("errorMsg");
+  el.style.display = "block";
+  el.textContent = msg;
+}
+
+function saveImage() {
+  const img = document.querySelector("#imageArea img");
+  if (!img) return;
+  const a = document.createElement("a");
+  a.href = img.src;
+  a.download = "generated_" + currentTaskId + ".png";
+  a.click();
+}
+
+function retry() {
+  document.getElementById("generateBtn").click();
+}
+
+// Start polling when generate is called
+var origGenerate = generate;
+generate = function() {
+  stopPolling();
+  origGenerate().then(function() {
+    pollTimer = setInterval(poll, 1000);
+  });
+};
+</script>
+</body>
+</html>
