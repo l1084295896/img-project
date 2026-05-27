@@ -35,7 +35,7 @@
 
   .result-section {
     background: #1a1a24; border-radius: 12px; padding: 20px;
-    border: 1px solid #2a2a3a; min-height: 200px;
+    border: 1px solid #2a2a3a; min-height: 200px; margin-bottom: 24px;
   }
   .result-section h2 { font-size: 18px; margin-bottom: 16px; }
 
@@ -49,9 +49,7 @@
   .step.failed { background: #3a1a1a; color: #f87171; }
   @keyframes pulse { 50% { opacity: 0.6; } }
 
-  .image-area {
-    text-align: center; margin-bottom: 16px;
-  }
+  .image-area { text-align: center; margin-bottom: 16px; }
   .image-area img {
     max-width: 100%; max-height: 500px; border-radius: 8px;
     border: 1px solid #2a2a3a;
@@ -60,6 +58,12 @@
     display: flex; align-items: center; justify-content: center;
     height: 200px; color: #555; font-size: 14px;
   }
+
+  .prompt-display {
+    margin-bottom: 16px; padding: 12px; background: #111118;
+    border: 1px solid #2a2a3a; border-radius: 8px; font-size: 13px;
+  }
+  .prompt-display .prompt-label { color: #6c5ce7; font-weight: bold; }
 
   .info { font-size: 13px; color: #888; margin-bottom: 16px; }
   .info span { margin-right: 16px; }
@@ -76,6 +80,19 @@
 
   .error { background: #3a1a1a; border: 1px solid #f87171; border-radius: 8px;
     padding: 12px; color: #f87171; font-size: 14px; margin-bottom: 16px; }
+
+  .history-item {
+    padding: 10px 0; border-bottom: 1px solid #1a1a28;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-item .h-prompt { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history-item .h-meta { color: #555; font-size: 12px; white-space: nowrap; }
+  .history-item .h-reuse {
+    background: none; border: 1px solid #3a3a4a; color: #6c5ce7;
+    padding: 2px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+  }
+  .history-item .h-reuse:hover { border-color: #6c5ce7; }
 </style>
 </head>
 <body>
@@ -83,8 +100,22 @@
   <h1>Game Art Agent Demo</h1>
 
   <div class="input-section">
-    <textarea id="promptInput" placeholder="描述你想要的图片，例如：生成一张艾琳的战斗姿态"></textarea>
-    <button id="generateBtn" onclick="generate()">生成图片</button>
+    <textarea id="promptInput" placeholder="用中文描述想要的画面"></textarea>
+    <div style="display: flex; align-items: center; gap: 12px; margin-top: 12px;">
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+        <input type="radio" name="mode" value="smart" checked onchange="onModeChange()" style="accent-color: #4ade80;" />
+        <span>智能改写</span>
+      </label>
+<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+        <input type="radio" name="mode" value="free" onchange="onModeChange()" style="accent-color: #f59e0b;" />
+        <span>自由输入</span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+        <input type="checkbox" id="loraToggle" checked style="accent-color: #6c5ce7;" />
+        <span>LoRA</span>
+      </label>
+      <button id="generateBtn" onclick="generate()">生成图片</button>
+    </div>
   </div>
 
   <div class="result-section" id="resultSection">
@@ -94,11 +125,19 @@
     <div class="image-area" id="imageArea">
       <div class="placeholder">等待输入 prompt 开始生成</div>
     </div>
+    <div class="prompt-display" id="promptDisplay" style="display:none">
+      <span class="prompt-label">提示词：</span><span id="promptText"></span>
+    </div>
     <div class="info" id="infoArea"></div>
     <div class="actions" id="actions" style="display:none">
       <button class="primary" onclick="saveImage()">确认保存</button>
       <button class="danger" onclick="retry()">重新生成</button>
     </div>
+  </div>
+
+  <div class="result-section" id="historySection">
+    <h2>历史记录</h2>
+    <div id="historyArea" style="font-size: 13px; color: #555;">加载中...</div>
   </div>
 </div>
 
@@ -108,16 +147,20 @@ let pollTimer = null;
 
 const stepNames = {
   intent: "意图识别", template: "模板匹配",
-  workflow: "构建工作流", generate: "图片生成", error: "错误"
+  workflow: "构建工作流", generate: "图片生成", error: "错误",
+  free_prompt: "自由模式", rewrite: "智能改写"
 };
 
 async function generate() {
   const prompt = document.getElementById("promptInput").value.trim();
   if (!prompt) return;
 
+  const useLora = document.getElementById("loraToggle").checked;
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+
   const btn = document.getElementById("generateBtn");
   btn.disabled = true;
-  btn.textContent = "处理中...";
+  btn.textContent = mode === "smart" ? "Qwen 改写中..." : "处理中...";
 
   resetUI();
 
@@ -125,7 +168,12 @@ async function generate() {
     const resp = await fetch("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt })
+      body: JSON.stringify({
+        prompt,
+        use_lora: useLora,
+        free_prompt: mode === "free",
+        smart_rewrite: mode === "smart"
+      })
     });
     const data = await resp.json();
     currentTaskId = data.task_id;
@@ -141,6 +189,7 @@ function resetUI() {
   document.getElementById("steps").innerHTML = "";
   document.getElementById("errorMsg").style.display = "none";
   document.getElementById("imageArea").innerHTML = '<div class="placeholder">处理中...</div>';
+  document.getElementById("promptDisplay").style.display = "none";
   document.getElementById("infoArea").innerHTML = "";
   document.getElementById("actions").style.display = "none";
 }
@@ -157,8 +206,10 @@ function poll() {
       if (data.status === "done") {
         stopPolling();
         renderImage(data.image);
+        renderPrompt(data.info);
         renderInfo(data.info);
         showActions();
+        loadHistory();
         document.getElementById("generateBtn").disabled = false;
         document.getElementById("generateBtn").textContent = "生成图片";
       } else if (data.status === "error") {
@@ -203,6 +254,18 @@ function renderImage(imageB64) {
   }
 }
 
+function renderPrompt(info) {
+  if (!info || !info.prompt) return;
+  const el = document.getElementById("promptDisplay");
+  el.style.display = "block";
+  let html = '<span class="prompt-label">正向：</span>' + escapeHtml(info.prompt);
+  if (info.negative_prompt) {
+    html += ' | <span class="prompt-label" style="color:#f87171;">负向：</span>';
+    html += '<span style="color:#999;">' + escapeHtml(info.negative_prompt) + '</span>';
+  }
+  el.innerHTML = html;
+}
+
 function renderInfo(info) {
   if (!info) return;
   const el = document.getElementById("infoArea");
@@ -210,6 +273,7 @@ function renderInfo(info) {
   if (info.character) parts.push(`角色: ${info.character}`);
   if (info.template_desc) parts.push(`模板: ${info.template_desc}`);
   if (info.elapsed) parts.push(`耗时: ${info.elapsed}s`);
+  parts.push(`LoRA: ${info.use_lora ? '开启' : '关闭'}`);
   el.innerHTML = parts.map(p => `<span>${p}</span>`).join("");
 }
 
@@ -222,6 +286,19 @@ function showError(msg) {
   el.style.display = "block";
   el.textContent = msg;
 }
+
+function onModeChange() {
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  const ta = document.getElementById("promptInput");
+  if (mode === "smart") {
+    ta.placeholder = "用中文描述想要的画面，Qwen 会帮你改写为英文提示词";
+  } else if (mode === "free") {
+    ta.placeholder = "直接输入英文提示词：guofeng, Chinese style, ...";
+  } else {
+    ta.placeholder = "用中文描述角色，例如：艾琳正面站立全身像 / 夜岚持刀战斗 / 白芷温柔特写";
+  }
+}
+onModeChange();
 
 function saveImage() {
   const img = document.querySelector("#imageArea img");
@@ -236,7 +313,40 @@ function retry() {
   document.getElementById("generateBtn").click();
 }
 
-// Start polling when generate is called
+async function loadHistory() {
+  try {
+    const resp = await fetch("/api/history");
+    const history = await resp.json();
+    const el = document.getElementById("historyArea");
+    if (!history.length) {
+      el.innerHTML = "暂无记录";
+      return;
+    }
+    el.innerHTML = history.map(h => `
+      <div class="history-item">
+        <span class="h-prompt" title="${escapeHtml(h.prompt)}">${escapeHtml(h.prompt)}</span>
+        <span class="h-meta">${h.timestamp} | ${h.elapsed}s</span>
+        <button class="h-reuse" onclick="reusePrompt('${escapeHtml(h.prompt)}')">复用</button>
+      </div>
+    `).join("");
+  } catch (e) {
+    document.getElementById("historyArea").innerHTML = "加载失败";
+  }
+}
+
+function reusePrompt(prompt) {
+  document.getElementById("promptInput").value = prompt;
+  document.querySelector('input[name="mode"][value="free"]').checked = true;
+  onModeChange();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function escapeHtml(text) {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// Load history on page load + start polling when generate is called
+loadHistory();
 var origGenerate = generate;
 generate = function() {
   stopPolling();

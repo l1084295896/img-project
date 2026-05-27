@@ -5,27 +5,28 @@ from backend.config import DASHSCOPE_API_KEY, QWEN_MODEL
 
 dashscope.api_key = DASHSCOPE_API_KEY
 
-SYSTEM_PROMPT = """你是一个游戏美术需求分析助手。根据用户输入的自然语言描述，提取以下结构化信息，以JSON格式返回。
+REWRITE_SYSTEM_PROMPT = """You are an expert prompt engineer for SDXL image generation with a Chinese style LoRA. Given the user's Chinese description, output both a positive prompt and a negative prompt optimized for SDXL.
 
-返回格式：
-{
-  "category": "角色|场景|道具|UI",
-  "intent": "生成意图类型，如 stand_pose, action_pose, expression, three_view, illustration, scene_generation",
-  "character": "角色名称，非角色类可为null",
-  "pose": "姿势描述，不确定为null",
-  "mood": "情绪/氛围，不确定为null",
-  "angle": "视角，不确定为null",
-  "extra_description": "额外描述，不确定为null"
-}
+Positive prompt rules:
+- Always start with "guofeng, Chinese style, masterpiece, best quality,"
+- Use simple concrete English words
+- Describe subject, action, setting, composition, and style in that order
+- Keep under 80 words, no weight notation
 
-规则：
-- 只返回JSON，不要包含```json```标记或其他任何文字
-- 如果字段无法从输入中确定，设为null
-- category 必须填写"""
+Negative prompt rules:
+- Identify potential quality issues specific to the scene (e.g., bad hands for characters, bad perspective for landscapes, style pollution for traditional art)
+- Always include: "blurry, low quality, jpeg artifacts, watermark, text, signature, lowres"
+- For character scenes add: "bad anatomy, extra limbs, mutated hands, extra fingers, deformed face, western armor, 3D render, photorealistic"
+- For landscapes add: "people, cars, modern buildings, power lines, ugly architecture, photorealistic, 3D render"
+- For traditional Chinese art style add: "oil painting, western style, cartoon, anime, 3D render, photorealistic"
+- Keep under 50 words
+
+Return ONLY valid JSON:
+{"positive": "the positive prompt text", "negative": "the negative prompt text"}"""
 
 
-def recognize_intent(user_input: str) -> dict:
-    """Extract structured intent and parameters from natural language input via Qwen3."""
+def rewrite_prompt(user_input: str) -> dict:
+    """Rewrite user's Chinese input into optimized SDXL prompts via Qwen. Returns {"positive": ..., "negative": ...}."""
     if not user_input or not user_input.strip():
         raise ValueError("user_input must be a non-empty string")
 
@@ -33,28 +34,21 @@ def recognize_intent(user_input: str) -> dict:
         response = Generation.call(
             model=QWEN_MODEL,
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_input}
+                {"role": "system", "content": REWRITE_SYSTEM_PROMPT},
+                {"role": "user", "content": f"请为以下描述生成正负向提示词：{user_input}"}
             ],
-            temperature=0.1,
+            temperature=0.3,
             result_format="message"
         )
 
         if response.status_code != 200:
-            raise Exception(f"Qwen3 API error: status={response.status_code}")
+            raise Exception(f"Qwen API error: status={response.status_code}")
 
         content = response.output.choices[0].message.content
         result = json.loads(content)
-
-        defaults = {"category": None, "intent": None, "character": None,
-                    "pose": None, "mood": None, "angle": None,
-                    "extra_description": None}
-        for key, default in defaults.items():
-            result.setdefault(key, default)
-
-        return result
+        return {"positive": result["positive"].strip(), "negative": result["negative"].strip()}
 
     except json.JSONDecodeError:
-        raise Exception(f"Intent recognition failed: invalid JSON response: {content}")
+        raise Exception(f"Prompt rewrite failed: invalid JSON response: {content}")
     except Exception as e:
-        raise Exception(f"Intent recognition failed: {str(e)}")
+        raise Exception(f"Prompt rewrite failed: {str(e)}")

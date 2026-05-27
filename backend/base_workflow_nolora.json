@@ -8,23 +8,10 @@
       "title": "Load Checkpoint"
     }
   },
-  "2": {
-    "inputs": {
-      "lora_name": "chinese-style-sdxl.safetensors",
-      "strength_model": 0.65,
-      "strength_clip": 0.65,
-      "model": ["1", 0],
-      "clip": ["1", 1]
-    },
-    "class_type": "LoraLoader",
-    "_meta": {
-      "title": "Load LoRA"
-    }
-  },
   "3": {
     "inputs": {
       "text": "{PROMPT}",
-      "clip": ["2", 1]
+      "clip": ["1", 1]
     },
     "class_type": "CLIPTextEncode",
     "_meta": {
@@ -34,7 +21,7 @@
   "4": {
     "inputs": {
       "text": "{NEGATIVE}",
-      "clip": ["2", 1]
+      "clip": ["1", 1]
     },
     "class_type": "CLIPTextEncode",
     "_meta": {
@@ -60,7 +47,7 @@
       "sampler_name": "dpmpp_2m",
       "scheduler": "karras",
       "denoise": 1.0,
-      "model": ["2", 0],
+      "model": ["1", 0],
       "positive": ["3", 0],
       "negative": ["4", 0],
       "latent_image": ["5", 0]
@@ -89,7 +76,7 @@
       "sampler_name": "dpmpp_2m",
       "scheduler": "karras",
       "denoise": 0.45,
-      "model": ["2", 0],
+      "model": ["1", 0],
       "positive": ["3", 0],
       "negative": ["4", 0],
       "latent_image": ["7", 0]

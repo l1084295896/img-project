@@ -1,7 +1,7 @@
 import pytest
 import json
 from unittest.mock import patch, MagicMock
-from backend.pipeline.intent import recognize_intent
+from backend.pipeline.intent import rewrite_prompt
 
 
 def make_mock_response(content_dict):
@@ -16,75 +16,67 @@ def make_mock_response(content_dict):
 
 
 @patch("backend.pipeline.intent.Generation")
-def test_recognize_intent_returns_structured_data(mock_gen):
+def test_rewrite_prompt_returns_positive_and_negative(mock_gen):
     mock_gen.call.return_value = make_mock_response({
-        "category": "角色",
-        "intent": "action_pose",
-        "character": "艾琳",
-        "pose": "战斗姿态",
-        "mood": "张力",
-        "angle": "正面",
-        "extra_description": None
+        "positive": "guofeng, Chinese style, masterpiece, best quality, a warrior woman standing",
+        "negative": "blurry, low quality, bad anatomy, extra limbs"
     })
 
-    result = recognize_intent("生成一张艾琳的战斗姿态")
+    result = rewrite_prompt("一名女战士站立")
 
-    assert result["category"] == "角色"
-    assert result["intent"] == "action_pose"
-    assert result["character"] == "艾琳"
-    assert result["pose"] == "战斗姿态"
+    assert "positive" in result
+    assert "negative" in result
+    assert "guofeng" in result["positive"]
+    assert "blurry" in result["negative"]
 
 
 @patch("backend.pipeline.intent.Generation")
-def test_recognize_intent_fills_missing_fields_with_none(mock_gen):
+def test_rewrite_prompt_strips_whitespace(mock_gen):
     mock_gen.call.return_value = make_mock_response({
-        "category": "场景",
-        "intent": "scene_generation",
-        "angle": "鸟瞰"
+        "positive": "  guofeng, Chinese style, a landscape  ",
+        "negative": "  blurry, low quality  "
     })
 
-    result = recognize_intent("生成古代城市鸟瞰图")
+    result = rewrite_prompt("山水风景")
 
-    assert result["category"] == "场景"
-    assert result["character"] is None
-    assert result["pose"] is None
-    assert result["angle"] == "鸟瞰"
+    assert result["positive"] == "guofeng, Chinese style, a landscape"
+    assert result["negative"] == "blurry, low quality"
 
 
 @patch("backend.pipeline.intent.Generation")
-def test_recognize_intent_handles_non_200_status(mock_gen):
+def test_rewrite_prompt_handles_non_200_status(mock_gen):
     mock = make_mock_response({})
     mock.status_code = 403
     mock_gen.call.return_value = mock
 
-    with pytest.raises(Exception, match="Intent recognition failed"):
-        recognize_intent("测试prompt")
+    with pytest.raises(Exception, match="Prompt rewrite failed"):
+        rewrite_prompt("测试prompt")
 
 
 @patch("backend.pipeline.intent.Generation")
-def test_recognize_intent_handles_invalid_json(mock_gen):
+def test_rewrite_prompt_handles_invalid_json(mock_gen):
     mock = MagicMock()
     mock.status_code = 200
     mock.output = MagicMock()
     mock.output.choices = [
-        MagicMock(message=MagicMock(content="这不是JSON，是一段普通文本"))
+        MagicMock(message=MagicMock(content="这不是JSON"))
     ]
     mock_gen.call.return_value = mock
 
-    with pytest.raises(Exception, match="Intent recognition failed"):
-        recognize_intent("测试prompt")
+    with pytest.raises(Exception, match="Prompt rewrite failed"):
+        rewrite_prompt("测试prompt")
 
 
 @patch("backend.pipeline.intent.Generation")
-def test_recognize_intent_handles_api_error(mock_gen):
+def test_rewrite_prompt_handles_api_error(mock_gen):
     mock_gen.call.side_effect = Exception("API error")
 
-    with pytest.raises(Exception, match="Intent recognition failed"):
-        recognize_intent("测试prompt")
+    with pytest.raises(Exception, match="Prompt rewrite failed"):
+        rewrite_prompt("测试prompt")
 
 
-def test_recognize_intent_rejects_empty_input():
+def test_rewrite_prompt_rejects_empty_input():
     with pytest.raises(ValueError, match="non-empty string"):
-        recognize_intent("")
+        rewrite_prompt("")
     with pytest.raises(ValueError, match="non-empty string"):
-        recognize_intent("   ")
+        rewrite_prompt("   ")

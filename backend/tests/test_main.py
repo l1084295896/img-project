@@ -29,8 +29,8 @@ def test_get_result_returns_processing_status(client):
     tasks["test123"] = {
         "status": "processing",
         "steps": [
-            {"name": "intent", "status": "done"},
-            {"name": "template", "status": "in_progress"}
+            {"name": "rewrite", "status": "done"},
+            {"name": "free_prompt", "status": "in_progress"}
         ],
         "image": None,
         "info": None,
@@ -48,13 +48,12 @@ def test_get_result_returns_done_with_image(client):
     tasks["done1"] = {
         "status": "done",
         "steps": [
-            {"name": "intent", "status": "done"},
-            {"name": "template", "status": "done"},
-            {"name": "workflow", "status": "done"},
+            {"name": "rewrite", "status": "done"},
+            {"name": "free_prompt", "status": "done"},
             {"name": "generate", "status": "done"},
         ],
         "image": "iVBORw0KGgo=",
-        "info": {"character": "艾琳", "template": "char_action_fight", "elapsed": 12.3},
+        "info": {"character": "smart", "template": "smart_rewrite", "elapsed": 12.3},
         "error": None,
     }
 
@@ -63,7 +62,7 @@ def test_get_result_returns_done_with_image(client):
     data = resp.json()
     assert data["status"] == "done"
     assert data["image"] == "iVBORw0KGgo="
-    assert data["info"]["character"] == "艾琳"
+    assert data["info"]["character"] == "smart"
 
 
 def test_frontend_served(client):
