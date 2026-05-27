@@ -253,5 +253,9 @@ python -m uvicorn backend.main:app --port 8001
 <img width="1536" height="1536" alt="output_00003_" src="https://github.com/user-attachments/assets/b78c2046-94f2-48f5-bdea-ec45e62e805a" />
 <img width="1536" height="1536" alt="output_00005_" src="https://github.com/user-attachments/assets/4a439b78-b3ca-4c98-8ed3-9852d0c08816" />
 <img width="1536" height="1536" alt="output_00009_" src="https://github.com/user-attachments/assets/5e1bdd60-b6d3-4ef7-83bb-088861b63d5f" />
+<img width="1536" height="1536" alt="output_00017_" src="https://github.com/user-attachments/assets/96b62d40-a034-40a5-9040-1372b1f99fe9" />
+<img width="1536" height="1536" alt="output_00006_" src="https://github.com/user-attachments/assets/8146f59e-b4df-49e6-8aa4-9f1483469d16" />
+<img width="1536" height="1536" alt="output_00004_" src="https://github.com/user-attachments/assets/4a0d821d-c5af-4e34-ad7f-f5c25b753e6e" />
+<img width="1536" height="1536" alt="output_00010_" src="https://github.com/user-attachments/assets/3c7d3d3d-a932-4fe8-80fe-f463641cecb9" />
 
 
