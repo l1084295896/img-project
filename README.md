@@ -245,4 +245,13 @@ python -m uvicorn backend.main:app --port 8001
 ---
 
 ## 效果展示
+<img width="1085" height="946" alt="Snipaste_2026-05-27_04-37-46" src="https://github.com/user-attachments/assets/cac55f20-2d3a-40e2-991e-b8883bcf646f" />
+<img width="1276" height="991" alt="Snipaste_2026-05-27_04-19-21" src="https://github.com/user-attachments/assets/ad083c26-2a5f-4748-8d6c-adcb3b1b1cca" />
+<img width="958" height="586" alt="image" src="https://github.com/user-attachments/assets/2ce40b1c-3651-4914-b1bb-464de9f9d894" />
+<img width="1536" height="1536" alt="output_00013_" src="https://github.com/user-attachments/assets/360787f4-bdd1-4073-9e98-a829c8c20608" />
+<img width="1536" height="1536" alt="output_00002_" src="https://github.com/user-attachments/assets/2c8cbac9-9857-421c-9434-80627a2ad51b" />
+<img width="1536" height="1536" alt="output_00003_" src="https://github.com/user-attachments/assets/b78c2046-94f2-48f5-bdea-ec45e62e805a" />
+<img width="1536" height="1536" alt="output_00005_" src="https://github.com/user-attachments/assets/4a439b78-b3ca-4c98-8ed3-9852d0c08816" />
+<img width="1536" height="1536" alt="output_00009_" src="https://github.com/user-attachments/assets/5e1bdd60-b6d3-4ef7-83bb-088861b63d5f" />
+
 
