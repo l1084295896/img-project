@@ -32,7 +32,7 @@
 | LoRA Alpha | 32 |
 | 精度 | float16 |
 | 训练目标 | UNet（未训练 text encoder） |
-| 触发词 | `guofeng, Chinese style` |
+| 触发词 | ` Chinese style` |
 | 推荐权重 | 0.65（model 和 clip 均使用此值） |
 
 由于未训练 text encoder，提示词中的触发词是激活风格的关键——提示词**必须**以 `guofeng, Chinese style` 开头才能触发国风效果。Qwen 智能改写模式会自动添加触发词前缀，自由输入模式下用户需自行添加。
